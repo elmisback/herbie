@@ -83,7 +83,14 @@
         (when result
             (sow (list (change rule root-loc (cdr result)))))))))
 
-(define (rewrite-expression-head expr repr #:rules rules #:root [root-loc '()] #:depth [depth 1])
+(define (fix-up-variables sow pattern cngs)
+  ; pattern & (list change) -> (list change) * bindings
+  (match-define (change rule loc bindings) (car cngs))
+  (define result (pattern-substitute (rule-output rule) bindings))
+  (define bindings* (pattern-match pattern result))
+  (when bindings* (sow (cons cngs bindings*))))
+
+(define (rewrite-expression-head expr repr #:rules rules #:root [root-loc '()] #:depth [depth 2])
   (define type (representation-name (repr-of expr repr (*var-reprs*))))
   (define (rewriter sow expr ghead glen loc cdepth)
     ; expr _ _ _ _ -> (list (list change))
@@ -92,37 +99,18 @@
              (list? (rule-output rule))
              (= (length (rule-output rule)) glen)
              (eq? (car (rule-output rule)) ghead))
-        (for ([option (matcher* expr (rule-input rule) loc (- cdepth 1))])
+        (define option (matcher* expr (rule-input rule) loc (- cdepth 1)))
+        (when option
           ;; Each option is a list of change lists
           (sow (cons (change rule (reverse loc) (cdr option)) (car option)))))))
 
-  (define (reduce-children sow options)
-    ; (list (list ((list change) * bindings)))
-    ; -> (list ((list change) * bindings))
-    (for ([children options])
-      (let ([bindings* (foldl merge-bindings '() (map cdr children))])
-        (when bindings*
-          (sow (cons (apply append (map car children)) bindings*))))))
-
-  (define (fix-up-variables sow pattern cngs)
-    ; pattern (list change) -> (list change) * bindings
-    (match-define (change rule loc bindings) (car cngs))
-    (define result (pattern-substitute (rule-output rule) bindings))
-    (define bindings* (pattern-match pattern result))
-    (when bindings* (sow (cons cngs bindings*))))
-
   (define cache (make-hash))
   (define (matcher* expr pattern loc cdepth)
-    (hash-ref! cache (list loc pattern cdepth)
-               (λ ()
-                 (define opts (matcher expr pattern loc cdepth))
-                 (if (null? opts)
-                     opts
-                     (if (flag-set? 'generate 'secret-rr) (list (first opts)) opts)))))
+    (hash-ref! cache (list loc pattern cdepth) (λ () (matcher expr pattern loc cdepth))))
 
   (define (matcher expr pattern loc cdepth)
     ; expr pattern _ -> (list ((list change) * bindings))
-    (reap [sow]
+    (let/ec sow
       (match pattern
         [(? variable?)
          (sow (cons '() (list (cons pattern expr))))]
@@ -133,27 +121,26 @@
          (when (equal? expr pattern)
            (sow (cons '() '())))]
         [(list phead _ ...)
-         (when (and (list? expr) (equal? phead (car expr))
-                    (= (length pattern) (length expr)))
-           (let/ec k ;; We have an option to early exit if a child pattern cannot be matched
-             (define child-options ; (list (list ((list cng) * bnd)))
-               (for/list ([i (in-naturals)] [sube expr] [subp pattern] #:when (> i 0))
-                 ;; Note: fuel is "depth" not "cdepth", because we're recursing to a child
-                 (define options (matcher* sube subp (cons i loc) depth))
-                 (when (null? options) (k)) ;; Early exit 
-                 options))
-             (reduce-children sow (apply cartesian-product child-options))))
+         (when (and (list? expr) (equal? phead (car expr)) (= (length pattern) (length expr)))
+           (define children ; (list ((list cng) * bnd))
+             (for/list ([i (in-naturals)] [sube expr] [subp pattern] #:when (> i 0))
+               ;; Note: fuel is "depth" not "cdepth", because we're recursing to a child
+               (matcher* sube subp (cons i loc) depth)))
 
-         (when (and (> cdepth 0)
-                    (or (flag-set? 'generate 'better-rr)
-                        (not (and (list? expr) (equal? phead (car expr)) (= (length pattern) (length expr))))))
+           (when (andmap identity children)
+             (define bindings* (foldl merge-bindings '() (map cdr children)))
+             (when bindings*
+               (sow (cons (apply append (map car children)) bindings*)))))
+
+         (when (> cdepth 0)
            ;; Sort of a brute force approach to getting the bindings
            (rewriter (curry fix-up-variables sow pattern)
-                     expr (car pattern) (length pattern) loc (- cdepth 1)))])))
+                     expr (car pattern) (length pattern) loc (- cdepth 1)))])
+      #f))
 
   (reap [sow]
         (for ([rule rules] #:when (equal? type (rule-otype rule)))
-          (define options (matcher* expr (rule-input rule) (reverse root-loc) (- depth 1)))
-          (for ([option options])
+          (define option (matcher* expr (rule-input rule) (reverse root-loc) (- depth 1)))
+          (when option
             ;; Each option is a list of change lists
             (sow (reverse (cons (change rule root-loc (cdr option)) (car option))))))))
