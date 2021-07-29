@@ -88,12 +88,10 @@
   (define (rewriter sow expr ghead glen loc cdepth)
     ; expr _ _ _ _ -> (list (list change))
     (for ([rule rules] #:when (equal? type (rule-otype rule)))
-      (when (or
-             (not ghead) ; Any results work for me
-             (and
-              (list? (rule-output rule))
-              (= (length (rule-output rule)) glen)
-              (eq? (car (rule-output rule)) ghead)))
+      (when (and
+             (list? (rule-output rule))
+             (= (length (rule-output rule)) glen)
+             (eq? (car (rule-output rule)) ghead))
         (for ([option (matcher* expr (rule-input rule) loc (- cdepth 1))])
           ;; Each option is a list of change lists
           (sow (cons (change rule (reverse loc) (cdr option)) (car option)))))))
@@ -148,5 +146,9 @@
            (rewriter (curry fix-up-variables sow pattern)
                      expr (car pattern) (length pattern) loc (- cdepth 1)))])))
 
-  ;; The "#f #f" means that any output result works. It's a bit of a hack
-  (reap [sow] (rewriter (compose sow reverse) expr #f #f (reverse root-loc) depth)))
+  (reap [sow]
+        (for ([rule rules] #:when (equal? type (rule-otype rule)))
+          (define options (matcher* expr (rule-input rule) (reverse root-loc) (- depth 1)))
+          (for ([option options])
+            ;; Each option is a list of change lists
+            (sow (reverse (cons (change rule root-loc (cdr option)) (car option))))))))
