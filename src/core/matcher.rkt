@@ -113,7 +113,12 @@
 
   (define cache (make-hash))
   (define (matcher* expr pattern loc cdepth)
-    (hash-ref! cache (list loc pattern cdepth) (λ () (matcher expr pattern loc cdepth))))
+    (hash-ref! cache (list loc pattern cdepth)
+               (λ ()
+                 (define opts (matcher expr pattern loc cdepth))
+                 (if (null? opts)
+                     opts
+                     (if (flag-set? 'generate 'secret-rr) (list (first opts)) opts)))))
 
   (define (matcher expr pattern loc cdepth)
     ; expr pattern _ -> (list ((list change) * bindings))
