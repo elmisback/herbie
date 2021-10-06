@@ -6,7 +6,7 @@
          "timeline.rkt" "syntax/types.rkt" "syntax/sugar.rkt"
          "preprocess.rkt")
 (module+ test (require rackunit "load-plugin.rkt"))
-(provide make-sampler remove-unecessary-preprocessing)
+(provide make-sampler)
 
 (define (precondition->hyperrects precondition reprs repr)
   ;; FPBench needs unparameterized operators
@@ -127,24 +127,6 @@
   (define-values (front back) (split-at ls index))
   (append front (rest back)))
 
-
-; until fixed point, iterate through preprocessing attempting to drop preprocessing with no effect on error
-(define (remove-unecessary-preprocessing alt preprocessing #:removed [removed empty])
-  (define-values (result newly-removed)
-    (let loop ([preprocessing preprocessing] [i 0] [removed removed])
-      (cond
-        [(>= i (length preprocessing))
-         (values preprocessing removed)]
-        [(preprocessing-<=? alt (drop-at preprocessing i) preprocessing)
-         (loop (drop-at preprocessing i) i (cons (list-ref preprocessing i) removed))]
-        [else
-         (loop preprocessing (+ i 1) removed)])))
-  (cond
-    [(< (length result) (length preprocessing))
-     (remove-unecessary-preprocessing alt result #:removed newly-removed)]
-    [else
-     (timeline-push! 'remove-preprocessing (map (compose ~a preprocess->sexp) newly-removed))
-     result]))
 
 
 (define (hyperrect-weight hyperrect reprs)

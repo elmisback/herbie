@@ -4,7 +4,8 @@
 (require "interface.rkt" "programs.rkt" "float.rkt")
 
 (provide (struct-out symmetry-group) preprocess->sexp sexp->preprocess
-         *herbie-preprocess* apply-preprocess ival-preprocesses)
+         *herbie-preprocess* apply-preprocess ival-preprocesses
+         remove-unnecessary-preprocessing)
 
 ;; Tracks list of preprocess structs Herbie decides to apply
 (define *herbie-preprocess* (make-parameter empty))
@@ -73,3 +74,21 @@
         [else
          (loop (ival-preprocess current precondition (first todo))
                (rest todo))]))))
+
+; until fixed point, iterate through preprocessing attempting to drop preprocessing with no effect on error
+(define (remove-unecessary-preprocessing alt preprocessing #:removed [removed empty])
+  (define-values (result newly-removed)
+    (let loop ([preprocessing preprocessing] [i 0] [removed removed])
+      (cond
+        [(>= i (length preprocessing))
+         (values preprocessing removed)]
+        [(preprocessing-<=? alt (drop-at preprocessing i) preprocessing)
+         (loop (drop-at preprocessing i) i (cons (list-ref preprocessing i) removed))]
+        [else
+         (loop preprocessing (+ i 1) removed)])))
+  (cond
+    [(< (length result) (length preprocessing))
+     (remove-unecessary-preprocessing alt result #:removed newly-removed)]
+    [else
+     (timeline-push! 'remove-preprocessing (map (compose ~a preprocess->sexp) newly-removed))
+     result]))
