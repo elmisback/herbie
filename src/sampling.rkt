@@ -113,7 +113,9 @@
        (compose (valid-result? repr)
                 (batch-eval-progs (cons precondition programs) 'ival repr)
                 (ival-preprocesses precondition preprocess-structs repr)))
-     (find-intervals search-func hyperrects-analysis #:reprs reprs #:fuel (*max-find-range-depth*))]
+     (find-intervals search-func hyperrects-analysis #:fuel (*max-find-range-depth*)
+                     #:reprs (repr-midpoint reprs)
+                     #:log (log-search-step reprs))]
     [else
      hyperrects-analysis]))
 
@@ -143,7 +145,43 @@
     [else
      (timeline-push! 'remove-preprocessing (map (compose ~a preprocess->sexp) newly-removed))
      result]))
-    
+
+
+(define (hyperrect-weight hyperrect reprs)
+  (apply * (for/list ([interval (in-list hyperrect)] [repr (in-list reprs)])
+             (define ->ordinal (compose (representation-repr->ordinal repr)
+                                        (representation-bf->repr repr)))
+             (+ 1 (- (->ordinal (ival-hi interval)) (->ordinal (ival-lo interval)))))))
+
+(define (total-weight reprs hyperrects)
+  (define whole-space (expt 2 (apply + (map representation-total-bits reprs))))
+  (exact->inexact (/ (apply + (map (curryr hyperrect-weight reprs) hyperrects)) whole-space)))
+
+(define ((log-search-step reprs) true-set other-set false-set)
+  (define wt (total-weight reprs true-set))
+  (define wo (total-weight reprs other-set))
+  ;; Since the initial rects need not be whole space (but the
+  ;; missing area is implicitly "false") we don't measure the
+  ;; size of the "false" set.
+  (define wf (- 1 wt wo))
+  (timeline-push! 'sampling n wt wo wf))
+
+(define (repr-round repr dir point)
+  ((representation-repr->bf repr)
+   (parameterize ([bf-rounding-mode dir])
+     ((representation-bf->repr repr) point))))
+
+(define ((repr-midpoint repr) lo hi)
+  ; Midpoint is taken in repr-space, but values are stored in bf
+  (define <-ordinal (compose (representation-repr->bf repr) (representation-ordinal->repr repr)))
+  (define ->ordinal (compose (representation-repr->ordinal repr) (representation-bf->repr repr)))
+
+  (define lower (<-ordinal (floor (/ (+ (->ordinal hi) (->ordinal lo)) 2))))
+  (define higher (repr-round repr 'up (bfnext lower))) ; repr-next
+
+  (and (bf>= lower lo) (bf<= higher hi) ; False if lo and hi were already close together
+       (cons lower higher)))
+
 ; These definitions in place, we finally generate the points.
 ; A sampler returns two points- one without preprocessing and one with preprocessing
 (define (make-sampler repr precondition programs preprocess-structs)
