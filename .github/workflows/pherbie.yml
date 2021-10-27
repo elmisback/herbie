@@ -1,0 +1,22 @@
+name: Pareto-Herbie integration tests
+
+on: [push]
+
+env:
+  RUST_BACKTRACE: full
+
+jobs:
+  pherbie:
+    name: "Integration tests (Pherbie, Hamming)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Install Packages"
+        run: sudo apt-get install -y libmpfr6 libmpfr-dev
+      - name: "Install Racket"
+        uses: Bogdanp/setup-racket@v1.3.1
+        with:
+          version: '8.0'
+      - uses: actions/checkout@master
+      - name: "Install dependencies"
+        run: make install
+      - run: racket infra/travis.rkt --seed 0 --pareto bench/hamming/
