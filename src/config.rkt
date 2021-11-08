@@ -109,6 +109,8 @@
 (define *herbie-branch*
   (git-command "rev-parse" "--abbrev-ref" "HEAD" #:default "release"))
 
+(define *egg-output-file* (make-parameter (open-output-nowhere)))
+
 ;;; The "reset" mechanism for clearing caches and such
 
 (define resetters '())

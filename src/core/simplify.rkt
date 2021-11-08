@@ -148,7 +148,8 @@
      (egraph-add-exprs
       egg-graph
       exprs
-      (lambda (node-ids)
+      (lambda (node-ids egg-expr-strings)
+        (writeln (list egg-expr-strings proofs) (*egg-output-file*))
         (define iter-data (egg-run-rules egg-graph (*node-limit*) irules node-ids (and precompute? true)))
         
         (when (egraph-is-unsound-detected egg-graph)

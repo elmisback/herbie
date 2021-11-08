@@ -1,7 +1,7 @@
 #lang racket
 
 (require racket/lazy-require)
-(require "common.rkt" "multi-command-line.rkt" "errors.rkt" "load-plugin.rkt" "sandbox.rkt")
+(require "common.rkt" "multi-command-line.rkt" "errors.rkt" "load-plugin.rkt" "sandbox.rkt" "config.rkt")
 
 ;; Load all the plugins
 (load-herbie-plugins)
@@ -67,6 +67,8 @@
    [("--pareto") "Enables Pareto-Herbie (Pherbie)"
     (*pareto-mode* #t)
     (unless timeout-set? (*timeout* pareto-timeout))]
+   [("--egg-output") filename "Output egg simplifications and proofs"
+    (*egg-output-file* (open-output-file filename #:exists 'replace))]
    #:multi
    [("-o" "--disable") flag "Disable a flag (formatted category:name)"
     (define tf (string->flag flag))

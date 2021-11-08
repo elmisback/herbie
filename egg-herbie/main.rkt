@@ -172,7 +172,7 @@
                (string-append "Failed to add expr to egraph")
                (current-continuation-marks))))))
 
-  (define res (result-function node-ids))
+  (define res (result-function node-ids egg-exprs))
 
   (for/list ([result expr-results])
     (egraph_addresult_destroy result))
