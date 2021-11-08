@@ -152,9 +152,7 @@ impl Analysis<Math> for ConstantFold {
                     }
                 }
                 Math::Cbrt([_p, a]) => {
-                    println!("here");
                     if x(a)? == Ratio::new(BigInt::from(1), BigInt::from(1)) {
-                        println!("here2");
                         Ratio::new(BigInt::from(1), BigInt::from(1))
                     } else {
                         return None

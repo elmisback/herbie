@@ -132,16 +132,24 @@
   (map (lambda (a) (list (simplify-result a ""))) (regraph-extract rg)))
 
 (lazy-require
- [egg-herbie (with-egraph egraph-add-exprs egraph-run
+ [egg-herbie (with-egraph egraph-add-exprs egraph-run expr->egg-expr
                           egraph-is-unsound-detected egraph-get-proof
-                          egraph-get-times-applied egraph-get-simplest egraph-get-cost
-                          egg-expr->expr make-ffi-rules free-ffi-rules
-                          iteration-data-num-nodes iteration-data-time)])
+                          egraph-get-times-applied egraph-get-simplest
+                          egraph-get-cost egg-expr->expr make-ffi-rules free-ffi-rules
+                          to-egg-pattern iteration-data-num-nodes iteration-data-time)])
+
+(define (print-rust-rules rules)
+  (display "&[")
+  (for ([rule rules])
+       (fprintf (current-output-port) "(\"~s\", \"~s\", \"~s\"),\n" (rule-name rule) (to-egg-pattern (rule-input rule)) (to-egg-pattern (rule-output rule))))
+  (displayln "]"))
 
 (define/contract (simplify-batch-egg exprs #:rules rls #:precompute precompute? #:prove prove?)
   (-> (listof expr?) #:rules (listof rule?) #:precompute boolean? #:prove boolean? (listof (listof simplify-result?)))
   (timeline-push! 'method "egg-herbie")
   (define irules (rules->irules rls))
+  (when (equal? rls (*simplify-rules*))
+        (print-rust-rules rls))
 
   (with-egraph
    (lambda (egg-graph)
@@ -149,7 +157,6 @@
       egg-graph
       exprs
       (lambda (node-ids egg-expr-strings)
-        (writeln (list egg-expr-strings proofs) (*egg-output-file*))
         (define iter-data (egg-run-rules egg-graph (*node-limit*) irules node-ids (and precompute? true)))
         
         (when (egraph-is-unsound-detected egg-graph)
@@ -166,6 +173,14 @@
                        (egraph-get-simplest egg-graph id iter)
                        egg-graph)))
           node-ids))
+
+        (when (equal? rls (*simplify-rules*))
+              (define proofs-to-do
+                (for/list ([iterations all-iterations] [expr exprs])
+                          (egraph-get-proof egg-graph expr (last iterations))
+                          (list (expr->egg-expr expr egg-graph) (expr->egg-expr (last iterations) egg-graph))))
+              
+              (writeln (list egg-expr-strings proofs-to-do) (*egg-output-file*)))
         
         (for/list ([iterations all-iterations] [expr exprs])
                   ;; TODO make this only prove if prove? is true

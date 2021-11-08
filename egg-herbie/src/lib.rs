@@ -34,7 +34,7 @@ pub struct Context {
 pub unsafe extern "C" fn egraph_create() -> *mut Context {
     Box::into_raw(Box::new(Context {
         iteration: 0,
-        runner: Some(Runner::new(Default::default())),
+        runner: Some(Runner::new(Default::default()).with_explanations_enabled()),
         rules: vec![],
     }))
 }
@@ -294,7 +294,7 @@ pub unsafe extern "C" fn egraph_get_proof(
             .take()
             .unwrap_or_else(|| panic!("Runner has been invalidated"));
 
-        let mut proof = runner.explain_equivalence(&expr_rec, &goal_rec);
+        let mut proof = runner.explain_equivalence(&expr_rec, &goal_rec, 0, false);
         ctx.runner = Some(runner);
         let string = CString::new(proof.get_flat_string()).unwrap();
         let string_pointer = string.as_ptr();
@@ -327,7 +327,7 @@ pub unsafe extern "C" fn egraph_get_times_applied(ptr: *mut Context, name: *cons
         runner
             .iterations
             .iter()
-            .map(|iter| *iter.applied.get(&string).unwrap_or(&0) as u32)
+            .map(|iter| *iter.applied.get(&egg::Symbol::from(&string)).unwrap_or(&0) as u32)
             .sum()
     })
 }

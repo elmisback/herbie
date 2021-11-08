@@ -93,7 +93,7 @@
                                                       "ERROR") 
                                                   "\\]")
            (p "Proof")
-           (p ,proof))]
+           (p ,proof)))]
 
     [(alt prog `initial-simplify `(,prev))
      (define prog* (program->fpcore (resugar-program prog repr)))

@@ -10,7 +10,7 @@
          egraph-get-simplest egg-expr->expr egg-add-exn?
          make-ffi-rules free-ffi-rules egraph-get-cost
          egraph-is-unsound-detected egraph-get-times-applied
-         egraph-get-proof
+         egraph-get-proof expr->egg-expr to-egg-pattern
          (struct-out iteration-data))
 
 ;; the first hash table maps all symbols and non-integer values to new names for egg

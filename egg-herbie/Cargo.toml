@@ -6,7 +6,7 @@ edition = "2018"
 
 
 [dependencies]
-egg = { git = "https://github.com/egraphs-good/egg", rev = "bcdc7b676b08c8e878a10098dfac2f2fe60391e9" }
+egg = { git = "https://github.com/oflatt/egg", rev = "5639c971c0f5eff43fd072e3245946e9c38303a7" }
 
 log = "0.4"
 indexmap = "1"
