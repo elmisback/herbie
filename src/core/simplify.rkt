@@ -148,7 +148,7 @@
   (-> (listof expr?) #:rules (listof rule?) #:precompute boolean? #:prove boolean? (listof (listof simplify-result?)))
   (timeline-push! 'method "egg-herbie")
   (define irules (rules->irules rls))
-  (when (equal? rls (*simplify-rules*))
+  #;(when (equal? rls (*simplify-rules*))
         (print-rust-rules rls))
 
   (with-egraph
