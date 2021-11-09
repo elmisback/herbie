@@ -141,7 +141,7 @@
 (define (print-rust-rules rules)
   (display "&[")
   (for ([rule rules])
-       (fprintf (current-output-port) "(\"~s\", \"~s\", \"~s\"),\n" (rule-name rule) (to-egg-pattern (rule-input rule)) (to-egg-pattern (rule-output rule))))
+       (fprintf (current-output-port) "(\"~s\", ~s, ~s),\n" (rule-name rule) (to-egg-pattern (rule-input rule)) (to-egg-pattern (rule-output rule))))
   (displayln "]"))
 
 (define/contract (simplify-batch-egg exprs #:rules rls #:precompute precompute? #:prove prove?)
